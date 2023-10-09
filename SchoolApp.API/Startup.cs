@@ -38,6 +38,22 @@ namespace SchoolApp.API
         {
             services.AddDbContext<AppDbContext>(options =>options.UseSqlServer(ConnectionString));
 
+            var tokenValidationParameter= new TokenValidationParameters()
+			{
+				ValidateIssuerSigningKey = true,
+				IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["JWT:Secret"])),
+
+				ValidateIssuer = true,
+				ValidIssuer = Configuration["JWT:Issuer"],
+
+				ValidateAudience = true,
+				ValidAudience = Configuration["JWT:Audience"],
+
+                ValidateLifetime = true,
+                ClockSkew=TimeSpan.Zero
+			};
+            services.AddSingleton(tokenValidationParameter);
+
 			services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>();
 
             services.AddAuthentication(options => { options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -46,18 +62,9 @@ namespace SchoolApp.API
             }).AddJwtBearer(options => {
                 options.SaveToken = true;
                 options.RequireHttpsMetadata = true;
-                options.TokenValidationParameters = new TokenValidationParameters()
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration["JWT:Secret"])),
+                options.TokenValidationParameters = tokenValidationParameter;
 
-                    ValidateIssuer = true,
-                    ValidIssuer = Configuration["JWT:Issuer"],
-
-                    ValidateAudience = true,
-                    ValidAudience= Configuration["JWT:Audience"]
-				};
-            });
+			});
 
 			services.AddControllers();
             services.AddSwaggerGen(c =>

@@ -23,14 +23,15 @@ namespace SchoolApp.API.Controllers
 		private readonly RoleManager<IdentityRole> _roleManager;
 		private readonly AppDbContext _context;
 		private readonly IConfiguration _configuration;
+		private readonly TokenValidationParameters _tokenValidationParameters;
 
-        public AuthenticationController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,AppDbContext context, IConfiguration configuration)
+        public AuthenticationController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager,AppDbContext context, IConfiguration configuration, TokenValidationParameters tokenValidationParameters)
         {
 			_userManager=userManager;
 			_roleManager = roleManager;
 			_context = context;
 			_configuration = configuration;
-
+			_tokenValidationParameters = tokenValidationParameters;
 		}
 
 		[HttpPost("register-user")]
@@ -101,10 +102,23 @@ namespace SchoolApp.API.Controllers
 
 			var jwtToken=new JwtSecurityTokenHandler().WriteToken(token);
 
+			var refreshToken = new RefreshToken()
+			{
+				JwtId = token.Id,
+				IsRevoked = false,
+				UserId = user.Id,
+				DateAdded = DateTime.UtcNow,
+				DateExpire = DateTime.UtcNow.AddMonths(6),
+				Token = Guid.NewGuid().ToString() + "_" + Guid.NewGuid().ToString()
+			};
+			await _context.RefreshTokens.AddAsync(refreshToken);
+			await _context.SaveChangesAsync();
+
 			var response = new AuthResultVM() 
 			{
 				Token = jwtToken,
-				ExpiresAt=token.ValidTo
+				RefreshToken = refreshToken.Token,
+				ExpiresAt =token.ValidTo
 			};
 			return response;
 		}
